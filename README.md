@@ -35,8 +35,9 @@ Ensure you have the necessary permissions to execute system commands like **ps**
 Clone the repository or download the script file.
 Make the script executable:
 
-`chmod +x dashboard.sh`
-
+```bash
+chmod +x dashboard.sh
+```
 ### Usage
 You can run the script in various modes depending on the monitoring data you wish to see. Below are the options available:
 
@@ -56,27 +57,35 @@ You can run the script in various modes depending on the monitoring data you wis
 ### Examples
 Run the script with a full dashboard:
 
-`./dashboard.sh`
-
+```bash
+./dashboard.sh
+```
 This will run all the monitoring functions in a loop with the default refresh interval.
 
 ### Run the script to display CPU usage only:
 
-`./dashboard.sh -c`
-
+```bash
+./dashboard.sh -c`
+```
 ### Display memory usage and network monitoring information:
 
-`./dashboard.sh -m -n`
-
+```bash
+./dashboard.sh -m -n
+```
 ### Monitor essential services like SSH and web servers:
 
-`./dashboard.sh -s`
+```bash
+./dashboard.sh -s
+```
 
 ### Show CPU and memory usage details:
 
-`./dashboard.sh -u`
-
+```bash
+./dashboard.sh -u
+```
 ### Configuring the Refresh Interval
 To change the refresh interval, modify the REFRESH_INTERVAL variable at the top of the script:
 
-`REFRESH_INTERVAL=10`
+```bash
+REFRESH_INTERVAL=10
+```
