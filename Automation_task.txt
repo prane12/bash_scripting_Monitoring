@@ -1,0 +1,175 @@
+#!/bin/bash
+
+# Set the refresh interval in seconds
+REFRESH_INTERVAL=5
+
+# Function to display top 10 applications consuming the most CPU
+show_cpu_usage() {
+    echo "Top 10 applications by CPU usage:"
+    ps aux --sort=-%cpu | head -n 11 | awk '{print $1, $3, $11, $12, $13, $14, $15}' | column -t
+    echo ""
+}
+
+# Function to display top 10 applications consuming the most memory
+show_memory_usage() {
+    echo "Top 10 applications by memory usage:"
+    ps aux --sort=-%mem | head -n 11 | awk '{print $1, $4, $11, $12, $13, $14, $15}' | column -t
+    echo ""
+}
+
+# Function to monitor network usage
+network_monitoring() {
+    echo -e "\nNetwork Monitoring:"
+    echo "Concurrent connections:"
+    ss -t | grep -i established | wc -l
+    echo "Packet drops:"
+    netstat -i | grep -vE 'Iface|lo' | awk '{ print $1 " : " $5 " packets dropped" }'
+    echo "MB in and out:"
+    ip -s link show eth0 | awk '/RX:/{getline; print "MB In: " $1/1024/1024 " MB"} /TX:/{getline; print "MB Out: " $1/1024/1024 " MB"}'
+    echo ""
+}
+
+# Function to display disk space usage by mounted partitions
+show_disk_usage() {
+    echo "Disk Space Usage by Mounted Partitions:"
+    df -h | awk 'NR==1; NR>1 {print $0}'
+    echo ""
+    echo "Partitions Using More Than 80% of the Space:"
+    df -h | awk '$5+0 > 80 {print $0}'
+    echo ""
+}
+
+# Function to display system load averages
+get_load_average() {
+    echo "System Load Average:"
+    uptime | awk -F'load average:' '{ print $2 }'
+    echo ""
+}
+
+# Function to display CPU usage breakdown
+get_cpu_usage() {
+    echo "CPU Usage Breakdown:"
+    top -bn1 | grep "Cpu(s)" | awk '{print "User: " $2 "%, System: " $4 "%, Idle: " $8 "%, I/O Wait: " $10 "%, Nice: " $6 "%, Steal: " $14 "%"}'
+    echo ""
+}
+
+# Function to display memory usage
+get_memory_usage() {
+    echo "Memory Usage:"
+    free -h | awk '/Mem:/ {print "Total: " $2 ", Used: " $3 ", Free: " $4 ", Shared: " $5 ", Buffers/Cache: " $6 ", Available: 
+" $7}'
+    echo ""
+}
+
+# Function to display swap memory usage
+get_swap_usage() {
+    echo "Swap Memory Usage:"
+    free -h | awk 'NR==3{print "Total Swap: " $2 "\nUsed Swap: " $3 "\nFree Swap: " $4}'
+    echo ""
+}
+
+# Function to display the number of active processes
+show_active_processes() {
+    echo "Number of Active Processes:"
+    ps -e --no-headers | wc -l
+    echo ""
+    echo "Top 5 Processes by CPU Usage:"
+    ps aux --sort=-%cpu | awk 'NR==1 || NR<=6 {print $1, $2, $3, $4, $11}' | column -t
+    echo ""
+    echo "Top 5 Processes by Memory Usage:"
+    ps aux --sort=-%mem | awk 'NR==1 || NR<=6 {print $1, $2, $3, $4, $11}' | column -t
+    echo ""
+}
+
+# Function to check the status of a service
+check_service_status() {
+    local service_name=$1
+    systemctl is-active --quiet $service_name
+    if [ $? -eq 0 ]; then
+        echo "$service_name is running."
+    else
+        echo "$service_name is not running."
+    fi
+}
+
+# Function to monitor services
+service_monitoring() {
+    echo "Service Monitoring:"
+    check_service_status sshd
+
+    if systemctl list-units --type=service --all | grep -q "nginx.service"; then
+        check_service_status nginx
+    elif systemctl list-units --type=service --all | grep -q "apache2.service"; then
+        check_service_status apache2
+    else
+        echo "Web server (nginx or apache2) is not installed."
+    fi
+
+    if systemctl list-units --type=service --all | grep -q "iptables.service"; then
+        check_service_status iptables
+    elif systemctl list-units --type=service --all | grep -q "firewalld.service"; then
+        check_service_status firewalld
+    else
+        echo "Firewall service (iptables or firewalld) is not installed."
+    fi
+    echo ""
+}
+
+# Main function to call other functions based on command-line arguments
+main() {
+    while getopts "cmndlusa" opt; do
+        case ${opt} in
+            c )
+                show_cpu_usage
+                ;;
+            m )
+                show_memory_usage
+                ;;
+            n )
+                network_monitoring
+                ;;
+            d )
+                show_disk_usage
+                ;;
+            l )
+                get_load_average
+                ;;
+            u )
+                get_cpu_usage
+                get_memory_usage
+                ;;
+            s )
+                service_monitoring
+                ;;
+            a )
+                show_active_processes
+                ;;
+            \? )
+                echo "Invalid option: -$OPTARG" >&2
+                ;;
+            : )
+                echo "Invalid option: -$OPTARG requires an argument" >&2
+                ;;
+        esac
+    done
+
+    # Check if no options were provided
+    if [ "$OPTIND" -eq 1 ]; then
+        # No options provided, show all sections as a dashboard
+        show_cpu_usage
+        show_memory_usage
+        network_monitoring
+        show_disk_usage
+        get_load_average
+        get_cpu_usage
+        get_memory_usage
+        service_monitoring
+        show_active_processes
+    fi
+}
+
+# Refresh the dashboard every few seconds
+while true; do
+    main "$@"
+    sleep "$REFRESH_INTERVAL"
+done
